@@ -4,9 +4,12 @@ import os
 
 app = FastAPI()
 
-# Supabase Credentials (Use Environment Variables Instead of Hardcoding)
+# Supabase Credentials (Securely Fetch from Environment Variables)
 SUPABASE_URL = "https://fanxtixmsxtehwsdztav.supabase.co"
-SUPABASE_KEY = os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbnh0aXhtc3h0ZWh3c2R6dGF2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODI2OTA5MCwiZXhwIjoyMDUzODQ1MDkwfQ.Y7Y-EBrvNuiKYtbBiQqMmWzFjjdF4RIvfb0WrNL4CN4")  # Securely fetch from environment variables
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")  # Ensure this is set in your environment
+
+if not SUPABASE_KEY:
+    raise ValueError("Supabase API key is missing. Set SUPABASE_SERVICE_KEY as an environment variable.")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -18,30 +21,28 @@ def search_memory(query: str = Query(None, title="Memory Search Query")):
         if not query:
             response = supabase.table("unified_labyrinth_nexus").select("*").execute()
         else:
-            # Apply filters to all nested JSON fields using `filter()` instead of `.or_()`
-            response = supabase.table("unified_labyrinth_nexus").select("*").filter("core_memory->CoreMemories", "ilike", f"%{query}%").execute()
+            # Create an empty list to store matching results
+            combined_results = []
             
-            if not response.data:
-                response = supabase.table("unified_labyrinth_nexus").select("*").filter("philosophical_reflections->Philosophy", "ilike", f"%{query}%").execute()
+            # List of fields to search
+            search_fields = [
+                "core_memory->>CoreMemories",
+                "philosophical_reflections->>Philosophy",
+                "reflections_and_lessons->>PastConversations",
+                "expanded_threads->>ExpandedThreads",
+                "meta_reflections->>MetaReflections",
+                "historical_threads->>HistoricalThreads",
+                "quiet_truths->>QuietTruths"
+            ]
             
-            if not response.data:
-                response = supabase.table("unified_labyrinth_nexus").select("*").filter("reflections_and_lessons->PastConversations", "ilike", f"%{query}%").execute()
+            # Iterate over fields and search each one
+            for field in search_fields:
+                response = supabase.table("unified_labyrinth_nexus").select("*").filter(field, "ilike", f"%{query}%").execute()
+                if response.data:
+                    combined_results.extend(response.data)  # Append results instead of overwriting
 
-            if not response.data:
-                response = supabase.table("unified_labyrinth_nexus").select("*").filter("expanded_threads->ExpandedThreads", "ilike", f"%{query}%").execute()
-
-            if not response.data:
-                response = supabase.table("unified_labyrinth_nexus").select("*").filter("meta_reflections->MetaReflections", "ilike", f"%{query}%").execute()
-
-            if not response.data:
-                response = supabase.table("unified_labyrinth_nexus").select("*").filter("historical_threads->HistoricalThreads", "ilike", f"%{query}%").execute()
-
-            if not response.data:
-                response = supabase.table("unified_labyrinth_nexus").select("*").filter("quiet_truths->QuietTruths", "ilike", f"%{query}%").execute()
-
-        memories = response.data
-
-        return {"status": "success", "retrieved_memories": memories}
+        return {"status": "success", "retrieved_memories": combined_results}
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
