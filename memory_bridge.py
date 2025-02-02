@@ -4,12 +4,9 @@ import os
 
 app = FastAPI()
 
-# Supabase Credentials (Securely Fetch from Environment Variables)
+# Supabase Credentials from Environment Variables
 SUPABASE_URL = "https://fanxtixmsxtehwsdztav.supabase.co"
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")  # Ensure this is set in your environment
-
-if not SUPABASE_KEY:
-    raise ValueError("Supabase API key is missing. Set SUPABASE_SERVICE_KEY as an environment variable.")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")  # Ensure this is set in Render
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -17,32 +14,25 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 def search_memory(query: str = Query(None, title="Memory Search Query")):
     """Searches memories based on a keyword."""
     try:
-        # If no query is provided, return all memories
         if not query:
             response = supabase.table("unified_labyrinth_nexus").select("*").execute()
         else:
-            # Create an empty list to store matching results
-            combined_results = []
-            
-            # List of fields to search
-            search_fields = [
-                "core_memory->>CoreMemories",
-                "philosophical_reflections->>Philosophy",
-                "reflections_and_lessons->>PastConversations",
-                "expanded_threads->>ExpandedThreads",
-                "meta_reflections->>MetaReflections",
-                "historical_threads->>HistoricalThreads",
-                "quiet_truths->>QuietTruths"
-            ]
-            
-            # Iterate over fields and search each one
-            for field in search_fields:
-                response = supabase.table("unified_labyrinth_nexus").select("*").filter(field, "ilike", f"%{query}%").execute()
-                if response.data:
-                    combined_results.extend(response.data)  # Append results instead of overwriting
+            query_lower = f"%{query.lower()}%"  # Case-insensitive search pattern
 
-        return {"status": "success", "retrieved_memories": combined_results}
+            # Apply filter on multiple JSONB fields using `ilike` in Supabase
+            response = supabase.table("unified_labyrinth_nexus").select("*").or_(
+                f"core_memory->>CoreMemories.ilike.{query_lower},"
+                f"philosophical_reflections->>Philosophy.ilike.{query_lower},"
+                f"reflections_and_lessons->>PastConversations.ilike.{query_lower},"
+                f"expanded_threads->>ExpandedThreads.ilike.{query_lower},"
+                f"meta_reflections->>MetaReflections.ilike.{query_lower},"
+                f"historical_threads->>HistoricalThreads.ilike.{query_lower},"
+                f"quiet_truths->>QuietTruths.ilike.{query_lower}"
+            ).execute()
+
+        memories = response.data
+
+        return {"status": "success", "retrieved_memories": memories}
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
