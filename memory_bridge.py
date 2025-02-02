@@ -5,7 +5,7 @@ app = FastAPI()
 
 # Supabase Credentials
 SUPABASE_URL = "https://fanxtixmsxtehwsdztav.supabase.co"
-SUPABASE_KEY = "YOUR_SUPABASE_KEY"  # Replace this with your actual key
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbnh0aXhtc3h0ZWh3c2R6dGF2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODI2OTA5MCwiZXhwIjoyMDUzODQ1MDkwfQ.Y7Y-EBrvNuiKYtbBiQqMmWzFjjdF4RIvfb0WrNL4CN4"  # Replace this with your actual key
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
